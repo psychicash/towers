@@ -9,7 +9,7 @@ import xlsxwriter
 import xlrd
 import sys
 import astar_path
-
+import numpy as np
 
 
 
@@ -92,7 +92,7 @@ def project(pos, angle, distance):
 #########################
 class Level(object):
     def __init__(self, level = 1):
-        super.__init__(self)
+
         self.level_num = level
         self.outter_ring = [[0,0], [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [0,7],[0,8], [0,9], [0,10], [0,11], 
                             [1,0], [1,1], [1,2], [1,3], [1,4], [1,5], [1,6], [1,7],[1,8], [1,9], [1,10], [1,11],
@@ -113,8 +113,7 @@ class Level(object):
 
 
     def random_tower_local(self):
-        self.tower_pool.append(random.sample(self.outter_ring, k=10))
-        self.tower_pool.append(random.sample(self.inner_ring, k=4))
+        self.tower_pool = [sample for sample in random.sample(self.outter_ring, k=10)] + [s for s in random.sample(self.inner_ring, k=4)]
         self.tower_pool.sort()
         while len(self.launcher_location) == 0:
             launch_local = random.choice(self.outter_ring)
@@ -122,18 +121,18 @@ class Level(object):
             print(launch_local)
             if not (launch_local in self.tower_pool):
                 print("launch local not found in tower pool, appending launch_local")
-                self.launcher_location.append(launch_local)
+                self.launcher_location = launch_local
         while len(self.bunker_location) == 0:
             bunk_local = random.choice(self.inner_ring)
             print("Bunker local set to ")
             print(bunk_local)
             if not (bunk_local in self.tower_pool):
                 print("Bunk local not found in tower pool")
-                self.bunker_location.append(bunk_local)
+                self.bunker_location = bunk_local
 
-class Cl_Tower(object):
+class Cl_Tower(pygame.sprite.Sprite):
     def __init__(self, tower_pool_local):
-        super.__init__(self)
+        pygame.sprite.Sprite.__init__(self)
         self.creation_time = pygame.time.get_ticks()
         self.detection_level = 0.0
         self.health = 0
@@ -154,6 +153,7 @@ class Cl_Tower(object):
         #self.rect.x =
         #self.rect.y =
         self.last = pygame.time.get_ticks()
+        self.initial_path = []
 
     def resting_state(self):
         self.detection_level -= 1
@@ -172,84 +172,52 @@ class Cl_Tower(object):
 
 
 
+
+
     
 class Game(object):                                     #class reps an instance of the game
     def __init__(self):                                 #creates all attributes of the game
         self.game_over = False
+        self.grid = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ]
+
         self.all_sprites_list = pygame.sprite.Group()         #create sprite lists
         self.level = Level(level=1)
         self.level.random_tower_local()
-        print(self.level.tower_pool)
-        print(self.level.launcher_location)
-        print(self.level.bunker_location)
         self.towers = []
-        for i in range(len(self.level.tower_pool)):
-            self.towers.append(Cl_Tower(i(self.level.tower_pool[i])))
-            self.level.tower_pool[i].pop
+        self.tower_sprite_list = pygame.sprite.Group()
+        self.grid[self.level.bunker_location[0]][self.level.bunker_location[1]] = 'B'
+        self.grid[self.level.launcher_location[0]][self.level.launcher_location[1]] = 'L'
+        for i in range(self.level.num_of_towers):
+            z = random.choice(self.level.tower_pool)
+            self.towers.append(Cl_Tower(z))
+            x = self.towers[i].location[0][0]
+            y = self.towers[i].location[0][1]
+            ending = (x, y)
+            self.towers[i].initial_path = astar_path.astar(self.grid, start= self.level.bunker_location, end= ending)
+            self.tower_sprite_list.add(self.towers[i])
+            self.all_sprites_list.add(self.towers[i])
+            self.grid[self.towers[i].location[0][0]][self.towers[i].location[0][1]] = 'T'
 
 
-
-        self.grid = [
-                     [0,0,0,0,0,0,0,0,0,0,0,0],
-                     [0,0,0,0,0,0,0,0,0,0,0,0],
-                     [0,0,0,0,0,0,0,0,0,0,0,0],
-                     [0,0,0,0,0,0,0,0,0,0,0,0],
-                     [0,0,0,0,0,0,0,0,0,0,0,0],
-                     [0,0,0,0,0,0,0,0,0,0,0,0],
-                     [0,0,0,0,0,0,0,0,0,0,0,0]
-                     ]
-
-        start = (0,0)
-        end = (5, 4)
-
-        # print('calculating path')
-        # path = astar_path.astar(self.grid, start, end)
-        # print(path)
-
-        #self.enemy_bullet_list = pygame.sprite.Group()
-
-        #self.bullet_list = pygame.sprite.Group()
-        #todo move this to level class (subclass of game)self.enemy1 = Enemy(start_pos = [(SCREEN_WIDTH + 20), (SCREEN_HEIGHT - 10)], tar_pos = [(SCREEN_WIDTH//2), 100])
+        print(np.matrix(self.grid))
 
 
-                                                        #todo remove and replace enemy creation in the level object
-        #self.player = Player()  #create the player
-        #self.player_list = pygame.sprite.Group()
-        #self.player_list.add(self.player)
-        #self.enemy1 = Enemy(start_pos=[(SCREEN_WIDTH + 20), (SCREEN_HEIGHT - 10)], tar_pos=[(SCREEN_WIDTH // 2), 100])
-        #self.enemy_list = pygame.sprite.Group()
-        #self.enemy_list.add(self.enemy1)                #todo remove and add elsewhere...
-        #self.all_sprites_list.add(self.hscore)         #todo impliment
-        #self.all_sprites_list.add(self.player)
-        #self.all_sprites_list.add(self.enemy1)
 
     def process_events(self):                           #process all the events and return true if we close the window
         pygame.event.pump()
         keyinput = pygame.key.get_pressed()
         if keyinput[pygame.K_ESCAPE]:
             raise SystemExit
-        if keyinput[pygame.K_LEFT]:                     #TODO adjust controls for input based on game type
-            self.player.move_x(-1)
-        if keyinput[pygame.K_UP]:
-            self.player.move_y(-1)
-        if keyinput[pygame.K_DOWN]:
-            self.player.move_y(+1)
-        if keyinput[pygame.K_RIGHT]:
-            self.player.move_x(1)
 
-    '''
-        if keyinput[pygame.K_SPACE]:
-            self.cooldown = 400                         #cool down for bullet firing
-            now = pygame.time.get_ticks()
-            if now - self.player.last >= self.cooldown:
-                self.player.last = now
 
-                bullet = Bullet(pos = [self.player.get_x(), self.player.get_y()])
-
-                self.all_sprites_list.add(bullet)
-                self.bullet_list.add(bullet)
-    '''
-        #return False
 
     def run_logic(self):                                #method runs each frame and updates positions
         if not self.game_over:                          #and checks for collisions
@@ -265,14 +233,13 @@ class Game(object):                                     #class reps an instance 
 
 
     def display_frame(self, screen):
-            screen.fill(WHITE)
+            screen.fill(DK_GREEN)
             #screen.blit(BG1, [0,0])
 
-            #self.hscore.display_hs()
-            #self.player.display_lives()
-            #todo display player lives and level information
 
+            #todo display player lives and level information
             #todo customize game over window
+
             if self.game_over:                      #game over text on screen
                 text_var = pygame.freetype.Font('./images/font/future_thin.ttf', 16, False, False)
                 text_var2 = text_var.render("Game Over, click to restart", fgcolor = BLACK)
@@ -293,10 +260,11 @@ class Game(object):                                     #class reps an instance 
 
 def main():
     #screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-    screen = pygame.display.set_mode([640, 480])
+    screen = pygame.display.set_mode([640, 480])                  #comment this out and uncomment the fullscreen
+    #TODO make fullscreen toggle and make images scale with the playing field
     pygame.display.set_caption('') #TODO make a title for the window
 
-    pygame.mouse.set_visible(False)
+    pygame.mouse.set_visible(True)
 
     #create our objects and set data
     done = False
