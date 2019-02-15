@@ -1,0 +1,440 @@
+import pygame
+from pygame import freetype
+import os
+import random
+from math import sin, cos, pi, atan2, degrees
+import os.path
+from os import path
+import xlsxwriter
+import xlrd
+import sys
+import astar_path
+
+
+
+
+
+
+
+
+
+pygame.init()
+if not pygame.display.get_init():
+    pygame.display.init()
+if not pygame.freetype.was_init():
+    pygame.freetype.init()
+if not pygame.mixer.get_init():
+    pygame.mixer.init()
+
+
+#---------CONSTANTS
+FPSCLOCK = pygame.time.Clock() #sets up a clock used for throttleing the fps
+BOARDWIDTH = 12
+BOARDHEIGHT = 7
+TILESIZE = 100
+FPS = 60
+BLANK = None
+
+
+
+
+YELLOW = (255, 255, 0)
+RED = (255, 0, 0)
+GREEN = (12, 255, 0)
+DK_GREEN = (51, 102, 0)
+BLUE = (18, 0, 255)
+ORANGE = (255, 186, 0)
+SKYBLUE = (39, 145, 251)
+PURPLE = (153, 51, 255)
+DK_PURPLE = (102, 0, 204)
+BROWN = (204, 153, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+
+SCREEN_WIDTH = 1600
+SCREEN_HEIGHT = 900
+
+
+
+_image_library = {}
+
+def get_image(path):
+    global _image_library
+    image = _image_library.get(path)
+    if image == None:
+        canonicalized_path = path.replace('/', os.sep).replace('\\', os.sep)
+        image = pygame.image.load(canonicalized_path)
+    return image
+
+
+def get_angle(origin, destination):
+    """Returns angle in radians from origin to destination.
+    This is the angle that you would get if the points were
+    on a cartesian grid. Arguments of (0,0), (1, -1)
+    return .25pi(45 deg) rather than 1.75pi(315 deg).
+    """
+    x_dist = destination[0] - origin[0]
+    y_dist = destination[1] - origin[1]
+    return atan2(-y_dist, x_dist) % (2 * pi)
+
+
+
+def project(pos, angle, distance):
+    """Returns tuple of pos projected distance at angle
+    adjusted for pygame's y-axis.
+    """
+    return (pos[0] + (cos(angle) * distance),
+            pos[1] - (sin(angle) * distance))
+
+
+#######################
+########   Classes
+#########################
+class Level(object):
+    def __init__(self, level = 1):
+        super.__init__(self)
+        self.level_num = level
+        self.outter_ring = [[0,0], [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [0,7],[0,8], [0,9], [0,10], [0,11], 
+                            [1,0], [1,1], [1,2], [1,3], [1,4], [1,5], [1,6], [1,7],[1,8], [1,9], [1,10], [1,11],
+                            [2,0], [2,1], [2,2], [2,9], [2,10], [2,11],
+                            [3,0], [3,1], [3,3], [3,9], [3,10], [3,11],
+                            [4,0], [4,1], [4,4], [4,9], [4,10], [4,11],
+                            [5,0], [5,1], [5,2], [5,3], [5,4], [5,5], [5,6], [5,7], [5,8], [5,9], [5,10], [5,11],
+                            [6,0], [6,1], [6,2], [6,3], [6,4], [6,5], [6,6], [6,7], [6,8], [6,9], [6,10], [6,11]
+                            ]
+        self.inner_ring = [[2,3], [2,4], [2,5], [2,6], [2,7], [2,8],
+                           [3,3], [3,4], [3,5], [3,6], [3,7], [3,8],
+                           [4,3], [4,4], [4,5], [4,6], [4,7], [4,8],
+                           ]
+        self.tower_pool = []
+        self.launcher_location = []
+        self.bunker_location = []
+        self.num_of_towers = 4
+
+
+    def random_tower_local(self):
+        self.tower_pool.append(random.sample(self.outter_ring, k=10))
+        self.tower_pool.append(random.sample(self.inner_ring, k=4))
+        self.tower_pool.sort()
+        while len(self.launcher_location) == 0:
+            launch_local = random.choice(self.outter_ring)
+            print("Launch_local set to")
+            print(launch_local)
+            if not (launch_local in self.tower_pool):
+                print("launch local not found in tower pool, appending launch_local")
+                self.launcher_location.append(launch_local)
+        while len(self.bunker_location) == 0:
+            bunk_local = random.choice(self.inner_ring)
+            print("Bunker local set to ")
+            print(bunk_local)
+            if not (bunk_local in self.tower_pool):
+                print("Bunk local not found in tower pool")
+                self.bunker_location.append(bunk_local)
+
+class Cl_Tower(object):
+    def __init__(self, tower_pool_local):
+        super.__init__(self)
+        self.creation_time = pygame.time.get_ticks()
+        self.detection_level = 0.0
+        self.health = 0
+        self.location = [tower_pool_local]
+        self.detection_level_max = 100
+        self.state = ['sending', 'receiving', 'resting']
+        self.base_detection_gain = 1.0
+        self.images = []
+        img = get_image('./images/sprites/blue_tower_wdish.gif')
+        self.images.append(img)
+        img = get_image('./images/sprites/green_tower_wdish.gif')
+        self.images.append(img)
+        img = get_image('./images/sprites/red_tower_wdish.gif')
+        self.images.append(img)
+        self.image = self.images[0]
+        self.rect = self.image.get_rect()
+        #TODO - set x and y according to grid location on the screen
+        #self.rect.x =
+        #self.rect.y =
+        self.last = pygame.time.get_ticks()
+
+    def resting_state(self):
+        self.detection_level -= 1
+
+    def sending_state(self):
+        self.detection_level += self.base_detection_gain
+
+    def receiving_state(self):
+        self.detection_level += (self.base_detection_gain / 4)
+
+    def update(self):
+        pass
+
+
+
+
+
+
+    
+class Game(object):                                     #class reps an instance of the game
+    def __init__(self):                                 #creates all attributes of the game
+        self.game_over = False
+        self.all_sprites_list = pygame.sprite.Group()         #create sprite lists
+        self.level = Level(level=1)
+        self.level.random_tower_local()
+        print(self.level.tower_pool)
+        print(self.level.launcher_location)
+        print(self.level.bunker_location)
+        self.towers = []
+        for i in range(len(self.level.tower_pool)):
+            self.towers.append(Cl_Tower(i(self.level.tower_pool[i])))
+            self.level.tower_pool[i].pop
+
+
+
+        self.grid = [
+                     [0,0,0,0,0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0,0,0,0,0],
+                     [0,0,0,0,0,0,0,0,0,0,0,0]
+                     ]
+
+        start = (0,0)
+        end = (5, 4)
+
+        # print('calculating path')
+        # path = astar_path.astar(self.grid, start, end)
+        # print(path)
+
+        #self.enemy_bullet_list = pygame.sprite.Group()
+
+        #self.bullet_list = pygame.sprite.Group()
+        #todo move this to level class (subclass of game)self.enemy1 = Enemy(start_pos = [(SCREEN_WIDTH + 20), (SCREEN_HEIGHT - 10)], tar_pos = [(SCREEN_WIDTH//2), 100])
+
+
+                                                        #todo remove and replace enemy creation in the level object
+        #self.player = Player()  #create the player
+        #self.player_list = pygame.sprite.Group()
+        #self.player_list.add(self.player)
+        #self.enemy1 = Enemy(start_pos=[(SCREEN_WIDTH + 20), (SCREEN_HEIGHT - 10)], tar_pos=[(SCREEN_WIDTH // 2), 100])
+        #self.enemy_list = pygame.sprite.Group()
+        #self.enemy_list.add(self.enemy1)                #todo remove and add elsewhere...
+        #self.all_sprites_list.add(self.hscore)         #todo impliment
+        #self.all_sprites_list.add(self.player)
+        #self.all_sprites_list.add(self.enemy1)
+
+    def process_events(self):                           #process all the events and return true if we close the window
+        pygame.event.pump()
+        keyinput = pygame.key.get_pressed()
+        if keyinput[pygame.K_ESCAPE]:
+            raise SystemExit
+        if keyinput[pygame.K_LEFT]:                     #TODO adjust controls for input based on game type
+            self.player.move_x(-1)
+        if keyinput[pygame.K_UP]:
+            self.player.move_y(-1)
+        if keyinput[pygame.K_DOWN]:
+            self.player.move_y(+1)
+        if keyinput[pygame.K_RIGHT]:
+            self.player.move_x(1)
+
+    '''
+        if keyinput[pygame.K_SPACE]:
+            self.cooldown = 400                         #cool down for bullet firing
+            now = pygame.time.get_ticks()
+            if now - self.player.last >= self.cooldown:
+                self.player.last = now
+
+                bullet = Bullet(pos = [self.player.get_x(), self.player.get_y()])
+
+                self.all_sprites_list.add(bullet)
+                self.bullet_list.add(bullet)
+    '''
+        #return False
+
+    def run_logic(self):                                #method runs each frame and updates positions
+        if not self.game_over:                          #and checks for collisions
+
+            self.all_sprites_list.update()              #move all sprites
+
+
+
+
+
+
+
+
+
+    def display_frame(self, screen):
+            screen.fill(WHITE)
+            #screen.blit(BG1, [0,0])
+
+            #self.hscore.display_hs()
+            #self.player.display_lives()
+            #todo display player lives and level information
+
+            #todo customize game over window
+            if self.game_over:                      #game over text on screen
+                text_var = pygame.freetype.Font('./images/font/future_thin.ttf', 16, False, False)
+                text_var2 = text_var.render("Game Over, click to restart", fgcolor = BLACK)
+                center_x = (SCREEN_WIDTH // 2) - (text_var2[0].get_width() // 2)
+                center_y = (SCREEN_HEIGHT // 2) - (text_var2[0].get_height() // 2)
+                screen.blit(text_var2[0], [center_x, center_y])
+
+            if not self.game_over:
+                self.all_sprites_list.draw(screen)
+
+
+            pygame.display.flip()
+
+
+
+
+
+
+def main():
+    #screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+    screen = pygame.display.set_mode([640, 480])
+    pygame.display.set_caption('') #TODO make a title for the window
+
+    pygame.mouse.set_visible(False)
+
+    #create our objects and set data
+    done = False
+    clock = pygame.time.Clock()
+
+    #creates gme instance
+    global game
+    game = Game()
+
+    #TODO title screen insert here
+
+    #main game loop
+    while not done:
+        #process events
+        done = game.process_events()
+        #update stuff
+        game.run_logic()
+        #draw
+        game.display_frame(screen)
+        #pause for the next frame
+        clock.tick(60)
+
+
+    pygame.quit() # closes window and exits
+
+#BG1 = get_image('') #TODO set file path for background image
+#call the main function and start up the game
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+#TODO startup screen / movie intro
+#TODO Title Screen
+#TODO Controls - setup mouse controls - collision of sprite group with mouse runs function of class display menu
+#TODO setup game screen
+#TODO setup level creation -
+'''10% to 20% are water (+5% per skill increase)
+     8 to 17 squares have water in them
+solid 90% to 80%
+	30% to 25%are grass
+	40% to 35% dirt
+	20% sand
+'''
+#TODO randomly seclect site for bunker on map in the inner circle
+#TODO randomly select 10 tower sites on the outter and 4 on the inner
+#TODO randomly select sites for obsticles - hills, trees, buildings, vehicles 10 to 20% of the dirt blocks
+# are set aside for hills trees buildings and vehicles and 5 to 10% of the grass blocks for vehicles
+# buildings and trees
+
+#TODO random location sleected for missle truck
+#TODO calculate the path from station to tower location and assign to lines for all but 3 of the potential
+#tower locations
+#max mountains is 7
+
+'''
+
+max mountains is 7...
+morse code is sent when enough towers are active to send signal  take the number of hills total and convert that to percent.  then multiply by the level and floor it,  and that gives you the number of extra towers beyond 1 needed for transmission
+
+number of lines transmitted and recieved and transmitted is equal to 2 * level the number per action
+
+ex: level 1 - transmitting 2 lines, recieve 2 lines, transmit 2 lines - firing solution calculation - fire
+
+generic morse code sound plays while sending and then a quieter one plays while recieving
+red light goes hot on bunker when transmitting
+green light when no activity 
+blue light when recieving
+
+
+detection meter = 0 to 100% ... 100% fires missle towards tower with a random time of 10 seconds to 20 seconds counting down over the tower 
+dm is gained while transmitting at a rate of some amount per active frame
+dm is lost while inactive down to half it's highest value
+dm is gained at half value while reciving
+
+missle fires at tower, tower doesn't move it gets destroyed, can be repaired/fixed once with a spare part powerup
+missle fires at tower, tower moves, bomb explodes, destroyes the 9 blocks around it and the target block with impact crater
+wire is broken for those squares, can move towers inward
+
+if 4+ towers are within a certain number of squares (10) then the base gains detection at 1/8 the rate of the active towers 
+
+fire missle to win 
+
+powerup processing power gives 10% boost to formula calculation
+
+after each level, + points to score for the following
+
+# of towers undetected
+base undetected at all
+# of towers standing
+# of towers in original location
+
+lose points for lost bunker, tower, missle truck 
+
+purchase powerups between levels
+
+each additional level subtracts 0.05% from the ceiling of the dm max penalty is 50%
+each additional level adds possible interferance
+
+*maybe add weather issues
+
+each additional level gives computer opponent faster reloads
+each additional level gives slower reloads on truck
+each additional level gives more targets and increases the timer tick rate
+
+
+controls are as follows, left click on inactive wire to activate and left click again to reactivate
+
+click on tower to pull up tower menu, (options: power off/on, move, repair (if damaged), 
+click on missle truck to pull up truck menu (options: request firing solution, request reload, move)
+click on bunker to pull up menu (radio silence on/off, transmit, recieve, compute firing solution)
+
+click on broken wire to slect repair if repair is available
+
+screen has the following readouts
+
+main grid
+
+current battle info : number of soldiers vs number of robots/aliens
+number of targets needed to turn the tide fo the battle
+ammo available limited number of shots (can request resupply - takes time, increases detection by lowering max detection fro the round by 5%)
+
+tower/truck readout 
+
+
+3 levels created on new game
+1 level created every level after (starting points)
+
+
+
+POWERUP ideas - faster cpu - increases fire solution calculation
+    
+
+'''
+
+
+
+
+
