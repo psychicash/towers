@@ -195,16 +195,42 @@ class Game(object):                                     #class reps an instance 
         self.tower_sprite_list = pygame.sprite.Group()
         self.grid[self.level.bunker_location[0]][self.level.bunker_location[1]] = 'B'
         self.grid[self.level.launcher_location[0]][self.level.launcher_location[1]] = 'L'
-        for i in range(self.level.num_of_towers):
+        self.tower_generation(self.level.num_of_towers)
+
+
+    def tower_generation(self, qty):
+        for i in range(qty):
             z = random.choice(self.level.tower_pool)
             self.towers.append(Cl_Tower(z))
             x = self.towers[i].location[0][0]
             y = self.towers[i].location[0][1]
             ending = (x, y)
+            print(ending)
             self.towers[i].initial_path = astar_path.astar(self.grid, start= self.level.bunker_location, end= ending)
-            self.tower_sprite_list.add(self.towers[i])
-            self.all_sprites_list.add(self.towers[i])
-            self.grid[self.towers[i].location[0][0]][self.towers[i].location[0][1]] = 'T'
+            if len(self.towers[i].initial_path) <= 2:
+                continue
+            else:
+                print(self.towers[i].initial_path)
+                self.tower_sprite_list.add(self.towers[i])
+                self.all_sprites_list.add(self.towers[i])
+                self.grid[self.towers[i].location[0][0]][self.towers[i].location[0][1]] = 'T'
+        self.tower_cleanup()
+
+    def tower_cleanup(self):
+        #for loop for all T's in grid grab location and remove all values of self.towers that match 0
+        for set in self.towers:
+            print(self.grid[set.location[0][0]][set.location[0][1]])
+            print(set.location)
+            if self.grid[set.location[0][0]][set.location[0][1]] == 0:
+                print(set.location)
+                self.towers.remove(set)
+        if len(self.towers) < self.level.num_of_towers:
+            x = self.level.num_of_towers - len(self.towers)
+            self.tower_generation(x)
+        elif len(self.towers) == self.level.num_of_towers:
+            pass
+
+
 
 
         print(np.matrix(self.grid))
