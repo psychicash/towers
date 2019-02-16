@@ -5,9 +5,11 @@ import random
 from math import sin, cos, pi, atan2, degrees
 import os.path
 from os import path
+import sys
+
 import xlsxwriter
 import xlrd
-import sys
+
 import astar_path
 import numpy as np
 
@@ -154,21 +156,29 @@ class Cl_Tower(pygame.sprite.Sprite):
         #self.rect.y =
         self.last = pygame.time.get_ticks()
         self.initial_path = []
+        self.current_state = self.state[2]
 
     def resting_state(self):
         self.detection_level -= 1
+        self.image = self.images[0]
+        self.current_state = self.state[2]
 
     def sending_state(self):
         self.detection_level += self.base_detection_gain
+        self.image = self.images[2]
+        self.current_state = self.state[0]
 
     def receiving_state(self):
         self.detection_level += (self.base_detection_gain / 4)
+        self.image = self.images[1]
+        self.current_state = self.state[1]
 
     def update(self):
         pass
 
 
 
+#grid_squares = {[0][0]: (100, 50, 199, 149),[0][1]: (200, 50, 299, 149), [0][2]: (300, 50, 399, 149), [0][3]: (400, 50, 499, 149), [0][4]: (500, 50, 499, 149), [0][5]:   }
 
 
 
@@ -196,6 +206,11 @@ class Game(object):                                     #class reps an instance 
         self.grid[self.level.bunker_location[0]][self.level.bunker_location[1]] = 'B'
         self.grid[self.level.launcher_location[0]][self.level.launcher_location[1]] = 'L'
         self.tower_generation(self.level.num_of_towers)
+
+
+    def set_tower_images(self):
+        pass
+
 
 
     def tower_generation(self, qty):
@@ -231,9 +246,6 @@ class Game(object):                                     #class reps an instance 
             pass
 
 
-
-
-        print(np.matrix(self.grid))
 
 
 
@@ -286,7 +298,7 @@ class Game(object):                                     #class reps an instance 
 
 def main():
     #screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-    screen = pygame.display.set_mode([640, 480])                  #comment this out and uncomment the fullscreen
+    screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
     #TODO make fullscreen toggle and make images scale with the playing field
     pygame.display.set_caption('') #TODO make a title for the window
 
@@ -300,6 +312,12 @@ def main():
     global game
     game = Game()
 
+    print(np.matrix(game.grid))
+    # for i in range(0,7,1):
+    #     for j in range (0, 11, 1):
+    #         grid_squares(screen= screen, coords = (j, i))
+    # print("\n Printing Grid dict")
+    # print(grid_dict)
     #TODO title screen insert here
 
     #main game loop
