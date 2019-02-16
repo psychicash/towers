@@ -6,12 +6,12 @@ from math import sin, cos, pi, atan2, degrees
 import os.path
 from os import path
 import sys
-
 import xlsxwriter
 import xlrd
+import numpy as np
 
 import astar_path
-import numpy as np
+
 
 
 
@@ -87,6 +87,12 @@ def project(pos, angle, distance):
     """
     return (pos[0] + (cos(angle) * distance),
             pos[1] - (sin(angle) * distance))
+#TODO fix looking up rect values in dictionary
+def find_rect(key1, key2):
+    for key1, p_info in grid_dict.grid_squares.items():
+        for key2 in p_info:
+            return p_info[key2]
+
 
 
 #######################
@@ -99,14 +105,22 @@ class Level(object):
         self.outter_ring = [[0,0], [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [0,7],[0,8], [0,9], [0,10], [0,11], 
                             [1,0], [1,1], [1,2], [1,3], [1,4], [1,5], [1,6], [1,7],[1,8], [1,9], [1,10], [1,11],
                             [2,0], [2,1], [2,2], [2,9], [2,10], [2,11],
-                            [3,0], [3,1], [3,3], [3,9], [3,10], [3,11],
-                            [4,0], [4,1], [4,4], [4,9], [4,10], [4,11],
+                            [3,0], [3,1], [3,2], [3,9], [3,10], [3,11],
+                            [4,0], [4,1], [4,2], [4,9], [4,10], [4,11],
                             [5,0], [5,1], [5,2], [5,3], [5,4], [5,5], [5,6], [5,7], [5,8], [5,9], [5,10], [5,11],
                             [6,0], [6,1], [6,2], [6,3], [6,4], [6,5], [6,6], [6,7], [6,8], [6,9], [6,10], [6,11]
                             ]
         self.inner_ring = [[2,3], [2,4], [2,5], [2,6], [2,7], [2,8],
                            [3,3], [3,4], [3,5], [3,6], [3,7], [3,8],
                            [4,3], [4,4], [4,5], [4,6], [4,7], [4,8],
+                           ]
+        self.all_coords = [ [0,0], [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [0,7], [0,8], [0,9], [0,10], [0,11],
+                            [1,0], [1,1], [1,2], [1,3], [1,4], [1,5], [1,6], [1,7], [1,8], [1,9], [1,10], [1,11],
+                            [2,0], [2,1], [2,2], [2,3], [2,4], [2,5], [2,6], [2,7], [2,8], [2,9], [2,10], [2,11],
+                            [3,0], [3,1], [3,2], [3,3], [3,4], [3,5], [3,6], [3,7], [3,8], [3,9], [3,10], [3,11],
+                            [4,0], [4,1], [4,2], [4,3], [4,4], [4,5], [4,6], [4,7], [4,8], [4,9], [4,10], [4,11],
+                            [5,0], [5,1], [5,2], [5,3], [5,4], [5,5], [5,6], [5,7], [5,8], [5,9], [5,10], [5,11],
+                            [6,0], [6,1], [6,2], [6,3], [6,4], [6,5], [6,6], [6,7], [6,8], [6,9], [6,10], [6,11]
                            ]
         self.tower_pool = []
         self.launcher_location = []
@@ -119,15 +133,15 @@ class Level(object):
         self.tower_pool.sort()
         while len(self.launcher_location) == 0:
             launch_local = random.choice(self.outter_ring)
-            print("Launch_local set to")
-            print(launch_local)
+            print("Launch_local set to " + str(launch_local))
+
             if not (launch_local in self.tower_pool):
                 print("launch local not found in tower pool, appending launch_local")
                 self.launcher_location = launch_local
         while len(self.bunker_location) == 0:
             bunk_local = random.choice(self.inner_ring)
-            print("Bunker local set to ")
-            print(bunk_local)
+            print("Bunker local set to " + str(bunk_local))
+
             if not (bunk_local in self.tower_pool):
                 print("Bunk local not found in tower pool")
                 self.bunker_location = bunk_local
@@ -177,8 +191,39 @@ class Cl_Tower(pygame.sprite.Sprite):
         pass
 
 
+class spritesheet(object):
+    def __init__(self, filename):
+        try:
+            self.sheet = get_image(filename)
+        except pygame.error as message:
+            print('Unable to load spritesheet image:' + filename)
+            raise SystemExit
+    # Load a specific image from a specific rectangle
 
-#grid_squares = {[0][0]: (100, 50, 199, 149),[0][1]: (200, 50, 299, 149), [0][2]: (300, 50, 399, 149), [0][3]: (400, 50, 499, 149), [0][4]: (500, 50, 499, 149), [0][5]:   }
+    def image_at(self, rectangle, colorkey = None):
+        "Loads image from x,y,x+offset,y+offset"
+        rect = pygame.Rect(rectangle)
+        image = pygame.Surface(rect.size).convert()
+        image.blit(self.sheet, (0, 0), rect)
+        if colorkey is not None:
+            if colorkey is -1:
+                colorkey = image.get_at((0,0))
+            image.set_colorkey(colorkey, pygame.RLEACCEL)
+        return image
+    # Load a whole bunch of images and return them as a list
+
+    def images_at(self, rects, colorkey = None):
+        "Loads multiple images, supply a list of coordinates"
+        return [self.image_at(rect, colorkey) for rect in rects]
+    # Load a whole strip of images
+
+    def load_strip(self, rect, image_count, colorkey = None):
+        "Loads a strip of images and returns them as a list"
+        tups = [(rect[0]+rect[2]*x, rect[1], rect[2], rect[3])
+                for x in range(image_count)]
+        return self.images_at(tups, colorkey)
+
+
 
 
 
@@ -198,6 +243,10 @@ class Game(object):                                     #class reps an instance 
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
 
+        self.wire_image = []
+        self.set_wire_images()
+        self.set_wire_images()
+        self.wire_locations = []
         self.all_sprites_list = pygame.sprite.Group()         #create sprite lists
         self.level = Level(level=1)
         self.level.random_tower_local()
@@ -206,6 +255,17 @@ class Game(object):                                     #class reps an instance 
         self.grid[self.level.bunker_location[0]][self.level.bunker_location[1]] = 'B'
         self.grid[self.level.launcher_location[0]][self.level.launcher_location[1]] = 'L'
         self.tower_generation(self.level.num_of_towers)
+
+
+    def set_wire_images(self):
+        self.wire_ss = spritesheet('./images/sprites/wangtiles.png')
+        for i in range(0,4):
+            for j in range(0, 4):
+                image = self.wire_ss.image_at(rectangle = (0 + (100 * i), 0 + (100 * j), 99 + (100 * i), 99 + (100 * j)))
+                self.wire_image.append(image)
+
+    def set_wires_on_ground(self):
+        pass
 
 
     def set_tower_images(self):
@@ -220,24 +280,23 @@ class Game(object):                                     #class reps an instance 
             x = self.towers[i].location[0][0]
             y = self.towers[i].location[0][1]
             ending = (x, y)
-            print(ending)
+
             self.towers[i].initial_path = astar_path.astar(self.grid, start= self.level.bunker_location, end= ending)
-            if len(self.towers[i].initial_path) <= 2:
-                continue
-            else:
-                print(self.towers[i].initial_path)
-                self.tower_sprite_list.add(self.towers[i])
-                self.all_sprites_list.add(self.towers[i])
-                self.grid[self.towers[i].location[0][0]][self.towers[i].location[0][1]] = 'T'
+            print(self.towers[i].initial_path)
+            self.tower_sprite_list.add(self.towers[i])
+            self.all_sprites_list.add(self.towers[i])
+            self.grid[self.towers[i].location[0][0]][self.towers[i].location[0][1]] = 'T'
+            self.wire_locations.append(self.towers[i].initial_path)
+            self.towers[i].rect.x = self.towers[i].location[0][1] * 100 + 100
+            self.towers[i].rect.y = self.towers[i].location[0][0] * 100 + 50
+
+
         self.tower_cleanup()
 
     def tower_cleanup(self):
         #for loop for all T's in grid grab location and remove all values of self.towers that match 0
         for set in self.towers:
-            print(self.grid[set.location[0][0]][set.location[0][1]])
-            print(set.location)
             if self.grid[set.location[0][0]][set.location[0][1]] == 0:
-                print(set.location)
                 self.towers.remove(set)
         if len(self.towers) < self.level.num_of_towers:
             x = self.level.num_of_towers - len(self.towers)
