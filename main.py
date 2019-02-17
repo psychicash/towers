@@ -263,6 +263,7 @@ class Cl_Terrain(pygame.sprite.Sprite):
         self.rect.x = (self.location[1] * 100) + 100
         self.rect.y = (self.location[0] * 100) + 50
 
+
     def set_terrain_image(self, value):
         if value == 0:
             return './images/sprites/terrain/tile000.png'
@@ -315,8 +316,8 @@ class Game(object):                                     #class reps an instance 
 
         self.terrain_list = list()
         self.terrain = wang.wang_set(width = 12, height = 7)
-        print(self.terrain)
-        print(self.terrain[4][5])
+
+
         self.terrain_sprites = pygame.sprite.Group()
 
         for i in range(len(self.terrain)):
@@ -328,7 +329,7 @@ class Game(object):                                     #class reps an instance 
                 self.terrain_list.append(Cl_Terrain(x, y, value))
                 self.terrain_sprites.add(self.terrain_list[-1])
 
-
+        print(np.matrix(self.terrain))
         self.wire_image = []
         self.set_wire_images()
         self.set_wire_images()
@@ -432,7 +433,7 @@ class Game(object):                                     #class reps an instance 
             #screen.blit(BG1, [0,0])
 
 
-            #todo display player lives and level information
+            #todo display and level information
             #todo customize game over window
 
             if self.game_over:                      #game over text on screen
@@ -455,8 +456,8 @@ class Game(object):                                     #class reps an instance 
 
 
 def main():
-    screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-    #screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
+    #screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+    screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
     #TODO make fullscreen toggle and make images scale with the playing field
     pygame.display.set_caption('') #TODO make a title for the window
 
@@ -497,114 +498,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-#TODO startup screen / movie intro
-#TODO Title Screen
-#TODO Controls - setup mouse controls - collision of sprite group with mouse runs function of class display menu
-#TODO setup game screen
-#TODO setup level creation -
-'''10% to 20% are water (+5% per skill increase)
-     8 to 17 squares have water in them
-solid 90% to 80%
-	30% to 25%are grass
-	40% to 35% dirt
-	20% sand
-'''
-#TODO randomly seclect site for bunker on map in the inner circle
-#TODO randomly select 10 tower sites on the outter and 4 on the inner
-#TODO randomly select sites for obsticles - hills, trees, buildings, vehicles 10 to 20% of the dirt blocks
-# are set aside for hills trees buildings and vehicles and 5 to 10% of the grass blocks for vehicles
-# buildings and trees
-
-#TODO random location sleected for missle truck
-#TODO calculate the path from station to tower location and assign to lines for all but 3 of the potential
-#tower locations
-#max mountains is 7
-
-'''
-
-max mountains is 7...
-morse code is sent when enough towers are active to send signal  take the number of hills total and convert that to percent.  then multiply by the level and floor it,  and that gives you the number of extra towers beyond 1 needed for transmission
-
-number of lines transmitted and recieved and transmitted is equal to 2 * level the number per action
-
-ex: level 1 - transmitting 2 lines, recieve 2 lines, transmit 2 lines - firing solution calculation - fire
-
-generic morse code sound plays while sending and then a quieter one plays while recieving
-red light goes hot on bunker when transmitting
-green light when no activity 
-blue light when recieving
-
-
-detection meter = 0 to 100% ... 100% fires missle towards tower with a random time of 10 seconds to 20 seconds counting down over the tower 
-dm is gained while transmitting at a rate of some amount per active frame
-dm is lost while inactive down to half it's highest value
-dm is gained at half value while reciving
-
-missle fires at tower, tower doesn't move it gets destroyed, can be repaired/fixed once with a spare part powerup
-missle fires at tower, tower moves, bomb explodes, destroyes the 9 blocks around it and the target block with impact crater
-wire is broken for those squares, can move towers inward
-
-if 4+ towers are within a certain number of squares (10) then the base gains detection at 1/8 the rate of the active towers 
-
-fire missle to win 
-
-powerup processing power gives 10% boost to formula calculation
-
-after each level, + points to score for the following
-
-# of towers undetected
-base undetected at all
-# of towers standing
-# of towers in original location
-
-lose points for lost bunker, tower, missle truck 
-
-purchase powerups between levels
-
-each additional level subtracts 0.05% from the ceiling of the dm max penalty is 50%
-each additional level adds possible interferance
-
-*maybe add weather issues
-
-each additional level gives computer opponent faster reloads
-each additional level gives slower reloads on truck
-each additional level gives more targets and increases the timer tick rate
-
-
-controls are as follows, left click on inactive wire to activate and left click again to reactivate
-
-click on tower to pull up tower menu, (options: power off/on, move, repair (if damaged), 
-click on missle truck to pull up truck menu (options: request firing solution, request reload, move)
-click on bunker to pull up menu (radio silence on/off, transmit, recieve, compute firing solution)
-
-click on broken wire to slect repair if repair is available
-
-screen has the following readouts
-
-main grid
-
-current battle info : number of soldiers vs number of robots/aliens
-number of targets needed to turn the tide fo the battle
-ammo available limited number of shots (can request resupply - takes time, increases detection by lowering max detection fro the round by 5%)
-
-tower/truck readout 
-
-
-3 levels created on new game
-1 level created every level after (starting points)
-
-
-
-POWERUP ideas - faster cpu - increases fire solution calculation
-    
-
-'''
-
-
 
 
 
