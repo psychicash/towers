@@ -69,7 +69,7 @@ def astar(grid, start, end):
                 continue
 
             #make sure terrain is passable
-            if grid[node_position[0]][node_position[1]] != 0:
+            if grid[node_position[0]][node_position[1]] != 0 and grid[node_position[0]][node_position[1]] != 'T':
                 continue
 
             #create new node

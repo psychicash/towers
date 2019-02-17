@@ -11,6 +11,7 @@ import xlrd
 import numpy as np
 
 import astar_path
+import wang
 
 
 
@@ -223,9 +224,78 @@ class spritesheet(object):
                 for x in range(image_count)]
         return self.images_at(tups, colorkey)
 
+class Cl_Bunker(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.location = []
+        self.location.append(x)
+        self.location.append(y)
 
+        img = get_image('./images/sprites/bunker_icon.png')
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.x = (self.location[1] * 100) + 100
+        self.rect.y = (self.location[0] * 100) + 50
 
+class Cl_Launcer(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.location = []
+        self.location.append(x)
+        self.location.append(y)
+        img = get_image('./images/sprites/launcher_icon.png')
+        self.image = img
+        self.rect = self.image.get_rect()
 
+        self.rect.x = (self.location[1] * 100) + 100
+        self.rect.y = (self.location[0] * 100) + 50
+
+class Cl_Terrain(pygame.sprite.Sprite):
+    def __init__(self, x, y, value):
+        pygame.sprite.Sprite.__init__(self)
+        self.location = []
+        self.location.append(x)
+        self.location.append(y)
+        img = []
+        img.append(get_image(self.set_terrain_image(value)))
+        self.image = img[0]
+        self.rect = self.image.get_rect()
+        self.rect.x = (self.location[1] * 100) + 100
+        self.rect.y = (self.location[0] * 100) + 50
+
+    def set_terrain_image(self, value):
+        if value == 0:
+            return './images/sprites/terrain/tile000.png'
+        elif value == 1:
+            return './images/sprites/terrain/tile001.png'
+        elif value == 2:
+            return './images/sprites/terrain/tile002.png'
+        elif value == 3:
+            return './images/sprites/terrain/tile003.png'
+        elif value == 4:
+            return './images/sprites/terrain/tile004.png'
+        elif value == 5:
+            return './images/sprites/terrain/tile005.png'
+        elif value == 6:
+            return './images/sprites/terrain/tile006.png'
+        elif value == 7:
+            return './images/sprites/terrain/tile007.png'
+        elif value == 8:
+            return './images/sprites/terrain/tile008.png'
+        elif value == 9:
+            return './images/sprites/terrain/tile009.png'
+        elif value == 10:
+            return './images/sprites/terrain/tile010.png'
+        elif value == 11:
+            return './images/sprites/terrain/tile011.png'
+        elif value == 12:
+            return './images/sprites/terrain/tile012.png'
+        elif value == 13:
+            return './images/sprites/terrain/tile013.png'
+        elif value == 14:
+            return './images/sprites/terrain/tile014.png'
+        elif value == 15:
+            return './images/sprites/terrain/tile015.png'
 
 
 
@@ -243,6 +313,22 @@ class Game(object):                                     #class reps an instance 
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
 
+        self.terrain_list = list()
+        self.terrain = wang.wang_set(width = 12, height = 7)
+        print(self.terrain)
+        print(self.terrain[4][5])
+        self.terrain_sprites = pygame.sprite.Group()
+
+        for i in range(len(self.terrain)):
+            for j in range(len(self.terrain[0])):
+                x = i
+                y = j
+                value = self.terrain[i][j]
+
+                self.terrain_list.append(Cl_Terrain(x, y, value))
+                self.terrain_sprites.add(self.terrain_list[-1])
+
+
         self.wire_image = []
         self.set_wire_images()
         self.set_wire_images()
@@ -252,8 +338,12 @@ class Game(object):                                     #class reps an instance 
         self.level.random_tower_local()
         self.towers = []
         self.tower_sprite_list = pygame.sprite.Group()
+        self.bunker = Cl_Bunker(self.level.bunker_location[0], self.level.bunker_location[1])
+        self.all_sprites_list.add(self.bunker)
         self.grid[self.level.bunker_location[0]][self.level.bunker_location[1]] = 'B'
         self.grid[self.level.launcher_location[0]][self.level.launcher_location[1]] = 'L'
+        self.launcher = Cl_Launcer(self.level.launcher_location[0], self.level.launcher_location[1] )
+        self.all_sprites_list.add(self.launcher)
         self.tower_generation(self.level.num_of_towers)
 
 
@@ -264,7 +354,11 @@ class Game(object):                                     #class reps an instance 
                 image = self.wire_ss.image_at(rectangle = (0 + (100 * i), 0 + (100 * j), 99 + (100 * i), 99 + (100 * j)))
                 self.wire_image.append(image)
 
+
+
+
     def set_wires_on_ground(self):
+        #for i in range(len(self.towers)):
         pass
 
 
@@ -274,21 +368,25 @@ class Game(object):                                     #class reps an instance 
 
 
     def tower_generation(self, qty):
+        print("Tower generation stage 1...")
         for i in range(qty):
             z = random.choice(self.level.tower_pool)
             self.towers.append(Cl_Tower(z))
             x = self.towers[i].location[0][0]
             y = self.towers[i].location[0][1]
-            ending = (x, y)
+            self.towers[i].rect.x = y * 100 + 100
+            self.towers[i].rect.y = x * 100 + 50
+            self.grid[x][y] = 'T'
 
-            self.towers[i].initial_path = astar_path.astar(self.grid, start= self.level.bunker_location, end= ending)
+        print("Tower generation stage 1 complete")
+        print("Prepare for stage 2...")
+        for i in range(len(self.towers)):
+            self.towers[i].initial_path = astar_path.astar(self.grid, start= self.level.bunker_location, end= (self.towers[i].location[0][0], self.towers[i].location[0][1]))
             print(self.towers[i].initial_path)
             self.tower_sprite_list.add(self.towers[i])
             self.all_sprites_list.add(self.towers[i])
-            self.grid[self.towers[i].location[0][0]][self.towers[i].location[0][1]] = 'T'
             self.wire_locations.append(self.towers[i].initial_path)
-            self.towers[i].rect.x = self.towers[i].location[0][1] * 100 + 100
-            self.towers[i].rect.y = self.towers[i].location[0][0] * 100 + 50
+
 
 
         self.tower_cleanup()
@@ -345,6 +443,7 @@ class Game(object):                                     #class reps an instance 
                 screen.blit(text_var2[0], [center_x, center_y])
 
             if not self.game_over:
+                self.terrain_sprites.draw(screen)
                 self.all_sprites_list.draw(screen)
 
 
@@ -356,8 +455,8 @@ class Game(object):                                     #class reps an instance 
 
 
 def main():
-    #screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-    screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
+    screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+    #screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
     #TODO make fullscreen toggle and make images scale with the playing field
     pygame.display.set_caption('') #TODO make a title for the window
 
