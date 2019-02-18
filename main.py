@@ -12,6 +12,8 @@ import numpy as np
 
 import astar_path
 import wang
+import wire_placement
+
 
 
 
@@ -37,7 +39,7 @@ BOARDHEIGHT = 7
 TILESIZE = 100
 FPS = 60
 BLANK = None
-
+DEBUG = True
 
 
 
@@ -88,11 +90,6 @@ def project(pos, angle, distance):
     """
     return (pos[0] + (cos(angle) * distance),
             pos[1] - (sin(angle) * distance))
-#TODO fix looking up rect values in dictionary
-def find_rect(key1, key2):
-    for key1, p_info in grid_dict.grid_squares.items():
-        for key2 in p_info:
-            return p_info[key2]
 
 
 
@@ -147,6 +144,19 @@ class Level(object):
                 print("Bunk local not found in tower pool")
                 self.bunker_location = bunk_local
 
+    def random_obsticals(self):
+        pass
+
+    def enemy_army(self):
+        self.enemy_army_numbers = (level * self.num_of_towers) * 100000
+        self.enemy_hard_targets = (level * self.num_of_towers) * (100/random.choice(range(1,100)))
+
+
+
+
+
+
+
 class Cl_Tower(pygame.sprite.Sprite):
     def __init__(self, tower_pool_local):
         pygame.sprite.Sprite.__init__(self)
@@ -166,63 +176,137 @@ class Cl_Tower(pygame.sprite.Sprite):
         self.images.append(img)
         self.image = self.images[0]
         self.rect = self.image.get_rect()
-        #TODO - set x and y according to grid location on the screen
-        #self.rect.x =
-        #self.rect.y =
         self.last = pygame.time.get_ticks()
         self.initial_path = []
         self.current_state = self.state[2]
 
     def resting_state(self):
-        self.detection_level -= 1
         self.image = self.images[0]
         self.current_state = self.state[2]
 
     def sending_state(self):
-        self.detection_level += self.base_detection_gain
         self.image = self.images[2]
         self.current_state = self.state[0]
 
     def receiving_state(self):
-        self.detection_level += (self.base_detection_gain / 4)
         self.image = self.images[1]
         self.current_state = self.state[1]
 
+    def detection_bar(self):
+        pygame.draw.rect(screen, BLACK, self.rect.x - (self.rect.x // 2), self.rect.y - 20, height = 10, width = (self.detection_level_max/100) * 100)
+        pygame.draw.rect(screen, RED, self.rect.x - (self.rect.x // 2), self.rect.y - 20, height = 10, width = (self.detection_level/100) * 100)
+
+    class Cl_Tower_menu(pygame.sprite.Sprite):
+        def __init__(self):
+            pygame.sprite.Sprite.__init__(self, x, y, type)
+            self.last = pygame.time.get_ticks()
+            self.menu_images = []
+            self.menu_images_inactive = []
+            img = get_image('./images/sprites/menu_move_full.png')
+            self.menu_images.append(img)
+            img = get_image('./images/sprites/menu_move_inactive.png')
+            self.menu_images_inactive.append(img)
+            img = get_image('./images/sprites/reciving.png')
+            self.menu_images.append(img)
+            img = get_image('./images/sprites/reciving_not_active.png')
+            self.menu_images_inactive.append(img)
+            img = get_image('./images/sprites/transmitting.png')
+            self.menu_images.append(img)
+            img = get_image('./images/sprites/transmitting_not_active.png')
+            self.menu_images_inactive.append(img)
+            img = get_image('./images/sprites/cutpower.png')
+            self.menu_images.append(img)
+            img = get_image('./images/sprites/cutpower_not_active.png')
+            self.menu_images_inactive.append(img)
+            if type == 'move':
+                self.image = self.menu_images_inactive[0]
+                self.rect = self.image.get_rect
+                self.rect.x = x
+                self.rect.y = y
+            elif type == 'reciving':
+                self.image = self.menu_images_inactive[1]
+                self.rect = self.image.get_rect
+                self.rect.x = x
+                self.rect.y = y
+            elif type == 'transmitting':
+                self.image = self.menu_images_inactive[2]
+                self.rect = self.image.get_rect
+                self.rect.x = x
+                self.rect.y = y
+            elif type == 'cutpower':
+                self.image = self.menu_images_inactive[3]
+                self.rect = self.image.get_rect
+                self.rect.x = x
+                self.rect.y = y
+
+        def image_flip(self):
+            if type == 'move':
+                self.image = self.menu_images[0]
+            elif type == 'reciving':
+                self.image = self.menu_images[1]
+            elif type == 'transmitting':
+                self.image = self.menu_images[2]
+            elif type == 'cutpower':
+                self.image = self.menu_images[3]
+
+        def check_click(self, mouse):
+            if self.rect.collidepoint(mouse):
+                pass
+
+        def update(self):
+
+            if type == 'move':
+                if self.rect.x < x + 50:
+                    self.rect.x += 1
+                if self.rect.y > y - 100:
+                    self.rect.y -= 1
+            elif type == 'reciving':
+                if self.rect.x < x + 150:
+                    self.rect.x += 1
+                if self.rect.y > y + 50:
+                    self.rect.y += 1
+            elif type == 'transmitting':
+                if self.rect.x < x + 150:
+                    self.rect.x += 1
+                if self.rect.y > y - 50:
+                    self.rect.y += 1
+            elif type == 'cutpower':
+                if self.rect.x < x + 50:
+                    self.rect.x += 1
+                if self.rect.y > y + 100:
+                    self.rect.y += 1
+
     def update(self):
-        pass
+        if self.current_state == self.state[1]:
+            self.detection_level += (self.base_detection_gain / 4)
+        elif self.current_state == self.state[0]:
+            self.detection_level += self.base_detection_gain
+        elif self.current_state == self.state[2]:
+            self.detection_level -= (self.base_detection_gain / 2)
+        if self.detection_level >= self.detection_level_max:
+            pass
+        if self.detection_level > 0:
+            detection_bar()
+
+            #todo add detection level event
+
+    def check_click(self, mouse):
+        if self.rect.collidepoint(mouse):
+            self.menu_open()
+
+    def menu_open(self):
+        self.move = self.Cl_Tower_menu(x = self.rect.x, y = self.rect.y, type = 'move')
+        self.receiving = self.Cl_Tower_menu(x = self.rect.x, y = self.rect.y, type = 'reciving')
+        self.transmitting = self.Cl_Tower_menu(x = self.rect.x, y = self.rect.y, type = 'transmitting')
+        self.cutpower = self.Cl_Tower_menu(x = self.rect.x, y = self.rect.y, type = 'cutpower')
+        game.is_menu_open = True
+        self.menu_sprites = pygame.sprite.Group()
+        self.menu_sprites.add(move)
+        self.menu_sprites.add(receiving)
+        self.menu_sprites.add(transmitting)
+        self.menu_sprites.add(cutpower)
 
 
-class spritesheet(object):
-    def __init__(self, filename):
-        try:
-            self.sheet = get_image(filename)
-        except pygame.error as message:
-            print('Unable to load spritesheet image:' + filename)
-            raise SystemExit
-    # Load a specific image from a specific rectangle
-
-    def image_at(self, rectangle, colorkey = None):
-        "Loads image from x,y,x+offset,y+offset"
-        rect = pygame.Rect(rectangle)
-        image = pygame.Surface(rect.size).convert()
-        image.blit(self.sheet, (0, 0), rect)
-        if colorkey is not None:
-            if colorkey is -1:
-                colorkey = image.get_at((0,0))
-            image.set_colorkey(colorkey, pygame.RLEACCEL)
-        return image
-    # Load a whole bunch of images and return them as a list
-
-    def images_at(self, rects, colorkey = None):
-        "Loads multiple images, supply a list of coordinates"
-        return [self.image_at(rect, colorkey) for rect in rects]
-    # Load a whole strip of images
-
-    def load_strip(self, rect, image_count, colorkey = None):
-        "Loads a strip of images and returns them as a list"
-        tups = [(rect[0]+rect[2]*x, rect[1], rect[2], rect[3])
-                for x in range(image_count)]
-        return self.images_at(tups, colorkey)
 
 class Cl_Bunker(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -300,6 +384,7 @@ class Cl_Terrain(pygame.sprite.Sprite):
 
 
 
+
     
 class Game(object):                                     #class reps an instance of the game
     def __init__(self):                                 #creates all attributes of the game
@@ -316,7 +401,7 @@ class Game(object):                                     #class reps an instance 
 
         self.terrain_list = list()
         self.terrain = wang.wang_set(width = 12, height = 7)
-
+        self.game_running = True
 
         self.terrain_sprites = pygame.sprite.Group()
 
@@ -328,16 +413,15 @@ class Game(object):                                     #class reps an instance 
 
                 self.terrain_list.append(Cl_Terrain(x, y, value))
                 self.terrain_sprites.add(self.terrain_list[-1])
-
-        print(np.matrix(self.terrain))
-        self.wire_image = []
-        self.set_wire_images()
-        self.set_wire_images()
-        self.wire_locations = []
+        self.BG1 = get_image('./images/sprites/background.png')
+        if DEBUG == True:
+            print(np.matrix(self.terrain))
+            print("Above is the terrain spread")
         self.all_sprites_list = pygame.sprite.Group()         #create sprite lists
         self.level = Level(level=1)
         self.level.random_tower_local()
         self.towers = []
+        self.wire_locations = []
         self.tower_sprite_list = pygame.sprite.Group()
         self.bunker = Cl_Bunker(self.level.bunker_location[0], self.level.bunker_location[1])
         self.all_sprites_list.add(self.bunker)
@@ -346,26 +430,28 @@ class Game(object):                                     #class reps an instance 
         self.launcher = Cl_Launcer(self.level.launcher_location[0], self.level.launcher_location[1] )
         self.all_sprites_list.add(self.launcher)
         self.tower_generation(self.level.num_of_towers)
+        self.wire_loc = wire_placement.wire_placement(self.grid, self.towers, self.wire_locations)
+        self.wires_group = pygame.sprite.Group()
+        for i in range(len(self.wire_loc)):
+            self.wires_group.add(self.wire_loc[i])
+        self.wire_show = False
+        self.last_time = pygame.time.get_ticks()
+        self.cooldown = 400  # cool down
+        self.is_menu_open = False
 
-
-    def set_wire_images(self):
-        self.wire_ss = spritesheet('./images/sprites/wangtiles.png')
-        for i in range(0,4):
-            for j in range(0, 4):
-                image = self.wire_ss.image_at(rectangle = (0 + (100 * i), 0 + (100 * j), 99 + (100 * i), 99 + (100 * j)))
-                self.wire_image.append(image)
-
-
-
+    def wire_toggle(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_time >= self.cooldown:
+            pygame.mixer.Sound('./sound/menuclick.ogg')
+            self.last_time = now
+            if self.wire_show == False:
+                self.wire_show = True
+            elif self.wire_show == True:
+                self.wire_show = False
 
     def set_wires_on_ground(self):
         #for i in range(len(self.towers)):
         pass
-
-
-    def set_tower_images(self):
-        pass
-
 
 
     def tower_generation(self, qty):
@@ -384,9 +470,16 @@ class Game(object):                                     #class reps an instance 
         for i in range(len(self.towers)):
             self.towers[i].initial_path = astar_path.astar(self.grid, start= self.level.bunker_location, end= (self.towers[i].location[0][0], self.towers[i].location[0][1]))
             print(self.towers[i].initial_path)
+            temp = []
+            for j in range(len(self.towers[i].initial_path)):
+                if j == 0:
+                    pass
+                else:
+                    temp.append(self.towers[i].initial_path[j])
+
             self.tower_sprite_list.add(self.towers[i])
             self.all_sprites_list.add(self.towers[i])
-            self.wire_locations.append(self.towers[i].initial_path)
+            self.wire_locations.append(temp)
 
 
 
@@ -410,9 +503,27 @@ class Game(object):                                     #class reps an instance 
     def process_events(self):                           #process all the events and return true if we close the window
         pygame.event.pump()
         keyinput = pygame.key.get_pressed()
+        mouseinput = pygame.mouse.get_pressed()
+        mouse_pos = pygame.mouse.get_pos()
+
         if keyinput[pygame.K_ESCAPE]:
             raise SystemExit
+        if mouseinput[0] == 1:
+            if mouse_pos[0] > 100 and mouse_pos[0] < 350 and mouse_pos[1] > 770 and mouse_pos[1] < 825:
+                self.wire_toggle()
 
+        for s in self.all_sprites_list:
+            try:
+                if pygame.Rect((s.rect.x, s.rect.y), (s.rect.width, s.rect.height)).collidepoint(pygame.mouse.get_pos()):
+                    if mouseinput[0] == 1:
+                        s.check_click(event.pos)
+                    try:
+                        s.image_flip()
+                    except:
+                        pass
+
+            except:
+                continue
 
 
     def run_logic(self):                                #method runs each frame and updates positions
@@ -430,7 +541,7 @@ class Game(object):                                     #class reps an instance 
 
     def display_frame(self, screen):
             screen.fill(DK_GREEN)
-            #screen.blit(BG1, [0,0])
+            screen.blit(self.BG1, [0,0])
 
 
             #todo display and level information
@@ -443,11 +554,13 @@ class Game(object):                                     #class reps an instance 
                 center_y = (SCREEN_HEIGHT // 2) - (text_var2[0].get_height() // 2)
                 screen.blit(text_var2[0], [center_x, center_y])
 
-            if not self.game_over:
+            elif self.game_running:
                 self.terrain_sprites.draw(screen)
                 self.all_sprites_list.draw(screen)
-
-
+                if self.wire_show == True:
+                    self.wires_group.draw(screen)
+                if self.is_menu_open == True:
+                    menu_sprites.draw(screen)
             pygame.display.flip()
 
 
@@ -456,8 +569,8 @@ class Game(object):                                     #class reps an instance 
 
 
 def main():
-    #screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-    screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
+    screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+    #screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
     #TODO make fullscreen toggle and make images scale with the playing field
     pygame.display.set_caption('') #TODO make a title for the window
 
@@ -472,6 +585,7 @@ def main():
     game = Game()
 
     print(np.matrix(game.grid))
+    print("above is the grid")
     # for i in range(0,7,1):
     #     for j in range (0, 11, 1):
     #         grid_squares(screen= screen, coords = (j, i))

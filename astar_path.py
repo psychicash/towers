@@ -59,7 +59,9 @@ def astar(grid, start, end):
             return path [::-1]
 
         children = []
-        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]:  #adjacent squares
+        #cut the following from the new position array to remove diagonals...
+        #                    , (-1, -1), (-1, 1), (1, -1), (1, 1)
+        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]:  #adjacent squares
 
             #get node position
             node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
