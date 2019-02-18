@@ -1,10 +1,9 @@
 import pygame
 from pygame import freetype
-import os
+
 import random
 from math import sin, cos, pi, atan2, degrees
-import os.path
-from os import path
+
 import sys
 import xlsxwriter
 import xlrd
@@ -13,13 +12,7 @@ import numpy as np
 import astar_path
 import wang
 import wire_placement
-
-
-
-
-
-
-
+from wire_placement import get_image
 
 
 
@@ -39,7 +32,7 @@ BOARDHEIGHT = 7
 TILESIZE = 100
 FPS = 60
 BLANK = None
-DEBUG = True
+DEBUG = False
 
 
 
@@ -61,15 +54,6 @@ SCREEN_HEIGHT = 900
 
 
 
-_image_library = {}
-
-def get_image(path):
-    global _image_library
-    image = _image_library.get(path)
-    if image == None:
-        canonicalized_path = path.replace('/', os.sep).replace('\\', os.sep)
-        image = pygame.image.load(canonicalized_path)
-    return image
 
 def myround(x, base=5):
     return (base * round(float(x)/base))
@@ -133,17 +117,21 @@ class Level(object):
         self.tower_pool.sort()
         while len(self.launcher_location) == 0:
             launch_local = random.choice(self.outter_ring)
-            print("Launch_local set to " + str(launch_local))
+            if DEBUG:
+                print("Launch_local set to " + str(launch_local))
 
             if not (launch_local in self.tower_pool):
-                print("launch local not found in tower pool, appending launch_local")
+                if DEBUG:
+                    print("launch local not found in tower pool, appending launch_local")
                 self.launcher_location = launch_local
         while len(self.bunker_location) == 0:
             bunk_local = random.choice(self.inner_ring)
-            print("Bunker local set to " + str(bunk_local))
+            if DEBUG:
+                print("Bunker local set to " + str(bunk_local))
 
             if not (bunk_local in self.tower_pool):
-                print("Bunk local not found in tower pool")
+                if DEBUG:
+                    print("Bunk local not found in tower pool")
                 self.bunker_location = bunk_local
 
     def random_obsticals(self):
@@ -185,9 +173,6 @@ class Cl_Tower(pygame.sprite.Sprite):
         self.initial_path = []
         self.current_state = self.state[2]
         self.flag = False
-        self.bar_images = []
-        for i in range(0, 100, 5):
-            self.bar_images.append(get_image('./images/sprites/bar/bar{0}.png'.format(i)))
 
 
 
@@ -206,19 +191,87 @@ class Cl_Tower(pygame.sprite.Sprite):
         self.image = self.images[1]
         self.current_state = self.state[1]
 
-    def detection_bar(self):
-        x = self.rect.x
-        y = self.rect.y - 8
-        detect = myround(self.detection_level)
-        for i in range(len(self.bar_images)):
-            if 'bar{0}.png'.format(detect) in self.bar_images[i]:
-                self.image = self.bar_images[i]
+    class Cl_detection_bar(pygame.sprite.Sprite):
+        def __init__(self, x, y):
+            pygame.sprite.Sprite.__init__(self)
+            self.location = []
+            self.location.append(x)
+            self.location.append(y)
+            self.load_images()
+            self.image = self.bar_images[0]
+            self.rect = self.image.get_rect()
+            self.rect.x = self.location[1]
+            self.rect.y = self.location[0] - 8
 
-        screen.blit(image, (x, y))
+            self.det = 0
+            self.reference_num = 0
+            self.creation_time = pygame.time.get_ticks()
+            self.last = pygame.time.get_ticks()
 
-        clock = pygame.time.Clock()
-        clock.tick(60)
-        #TODO replace pygame draw with images to change to every... 5 to 10%
+
+        def update(self):
+            now = pygame.time.get_ticks()
+            x = self.reference_num
+            if now - self.last > (10 * 1000):
+                x = self.detect()
+            if x == 0:
+                if now - self.last > (20 * 1000):
+                    self.kill()
+
+            self.image = self.bar_images[x]
+
+        def detect(self):
+            for s in game.tower_sprite_list:
+                if s.rect.x == self.location[0] and s.rect.y == self.location[1]:
+                    self.det = myround(s.detection_level)
+                    self.reference_num = self.dat
+                    return self.det
+
+        def load_images(self):
+            self.bar_images = []
+            img = get_image('./images/sprites/bar/bar0.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar5.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar10.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar15.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar20.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar25.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar30.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar35.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar40.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar45.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar50.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar55.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar60.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar65.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar70.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar75.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar80.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar85.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar90.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar95.png')
+            self.bar_images.append(img)
+            img = get_image('./images/sprites/bar/bar100.png')
+            self.bar_images.append(img)
+
 
     class Cl_Tower_menu(pygame.sprite.Sprite):
         def __init__(self, brian, fred, type):
@@ -369,7 +422,9 @@ class Cl_Tower(pygame.sprite.Sprite):
         if self.detection_level >= self.detection_level_max:
             pass
         if self.detection_level > 0:
-           self.detection_bar()
+           self.bar = self.Cl_detection_bar(self.rect.x, self.rect.y)
+            game.bar_sprite_list.add(self.bar)
+
 
       
     def close_menu(self):
@@ -468,9 +523,6 @@ class Cl_Terrain(pygame.sprite.Sprite):
             return './images/sprites/terrain/tile015.png'
 
 
-
-
-    
 class Game(object):                                     #class reps an instance of the game
     def __init__(self, screen):                                 #creates all attributes of the game
         self.game_over = False
@@ -503,6 +555,7 @@ class Game(object):                                     #class reps an instance 
             print(np.matrix(self.terrain))
             print("Above is the terrain spread")
         self.all_sprites_list = pygame.sprite.Group()         #create sprite lists
+        self.bar_sprite_list = pygame.sprite.Group()
         self.level = Level(level=1)
         self.level.random_tower_local()
         self.towers = []
@@ -554,11 +607,12 @@ class Game(object):                                     #class reps an instance 
         print("Tower generation stage 1 complete")
         print("Prepare for stage 2...")
         for i in range(len(self.towers)):
+            #i know this is a long line of code but... pathfinding needs stuff passed to it...
             self.towers[i].initial_path = astar_path.astar(self.grid, start= self.level.bunker_location, end= (self.towers[i].location[0][0], self.towers[i].location[0][1]))
             print(self.towers[i].initial_path)
             temp = []
             for j in range(len(self.towers[i].initial_path)):
-                if j == 0:
+                if j is 0:
                     pass
                 else:
                     temp.append(self.towers[i].initial_path[j])
@@ -574,7 +628,7 @@ class Game(object):                                     #class reps an instance 
     def tower_cleanup(self):
         #for loop for all T's in grid grab location and remove all values of self.towers that match 0
         for set in self.towers:
-            if self.grid[set.location[0][0]][set.location[0][1]] == 0:
+            if self.grid[set.location[0][0]][set.location[0][1]] is 0:
                 self.towers.remove(set)
         if len(self.towers) < self.level.num_of_towers:
             x = self.level.num_of_towers - len(self.towers)
@@ -595,7 +649,7 @@ class Game(object):                                     #class reps an instance 
 
         if keyinput[pygame.K_ESCAPE]:
             raise SystemExit
-        if mouseinput[0] == 1:
+        if mouseinput[0] is 1:
             if mouse_pos[0] > 100 and mouse_pos[0] < 350 and mouse_pos[1] > 770 and mouse_pos[1] < 825:
                 self.wire_toggle()
 
@@ -603,7 +657,7 @@ class Game(object):                                     #class reps an instance 
             if s.rect.collidepoint(mouse_pos):
                 if mouseinput[0] == 1:
                     s.menu_open()
-        if self.is_menu_open == True:
+        if self.is_menu_open:
             for s in self.menu_sprites:
                 if s.rect.collidepoint(mouse_pos):
                     if mouseinput[0] == 1:
@@ -644,9 +698,9 @@ class Game(object):                                     #class reps an instance 
             elif self.game_running:
                 self.terrain_sprites.draw(screen)
                 self.all_sprites_list.draw(screen)
-                if self.wire_show == True:
+                if self.wire_show:
                     self.wires_group.draw(screen)
-                if self.is_menu_open == True:
+                if self.is_menu_open:
                     self.menu_sprites.draw(screen)
             pygame.display.flip()
 
@@ -656,9 +710,13 @@ class Game(object):                                     #class reps an instance 
 
 
 def main():
-    screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-    #screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
+
+    screen = pygame.display.set_mode([1600, 900])                  #comment this out and uncomment the fullscreen
+
+    #screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+
     #TODO make fullscreen toggle and make images scale with the playing field
+
     pygame.display.set_caption('') #TODO make a title for the window
 
     pygame.mouse.set_visible(True)
@@ -671,13 +729,10 @@ def main():
     global game
     game = Game(screen)
 
-    print(np.matrix(game.grid))
-    print("above is the grid")
-    # for i in range(0,7,1):
-    #     for j in range (0, 11, 1):
-    #         grid_squares(screen= screen, coords = (j, i))
-    # print("\n Printing Grid dict")
-    # print(grid_dict)
+    if DEBUG:
+        print(np.matrix(game.grid))
+        print("above is the grid")
+
     #TODO title screen insert here
 
     #main game loop
@@ -695,8 +750,9 @@ def main():
 
     pygame.quit() # closes window and exits
 
-if __name__ == '__main__':
+if __name__ is '__main__':
     main()
-
+else:
+    main()
 
 

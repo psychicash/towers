@@ -1,6 +1,17 @@
-from main import get_image
 import pygame
+import os
+import os.path
+from os import path
 
+_image_library = {}
+
+def get_image(path):
+    global _image_library
+    image = _image_library.get(path)
+    if image == None:
+        canonicalized_path = path.replace('/', os.sep).replace('\\', os.sep)
+        image = pygame.image.load(canonicalized_path)
+    return image
 
 
 class Cl_Wire(pygame.sprite.Sprite):
