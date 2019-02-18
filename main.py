@@ -71,6 +71,8 @@ def get_image(path):
         image = pygame.image.load(canonicalized_path)
     return image
 
+def myround(x, base=5):
+    return (base * round(float(x)/base))
 
 def get_angle(origin, destination):
     """Returns angle in radians from origin to destination.
@@ -161,12 +163,14 @@ class Cl_Tower(pygame.sprite.Sprite):
     def __init__(self, tower_pool_local):
         pygame.sprite.Sprite.__init__(self)
         self.creation_time = pygame.time.get_ticks()
+        self.detection_level_max = 100
         self.detection_level = 0.0
+        if self.detection_level >= self.detection_level_max:
+            self.detection_level = self.detection_level_max
         self.health = 0
         self.location = [tower_pool_local]
-        self.detection_level_max = 100
         self.state = ['sending', 'receiving', 'resting']
-        self.base_detection_gain = 1.0
+        self.base_detection_gain = 0.15
         self.images = []
         img = get_image('./images/sprites/blue_tower_wdish.gif')
         self.images.append(img)
@@ -176,9 +180,19 @@ class Cl_Tower(pygame.sprite.Sprite):
         self.images.append(img)
         self.image = self.images[0]
         self.rect = self.image.get_rect()
+        self.open_menu = False
         self.last = pygame.time.get_ticks()
         self.initial_path = []
         self.current_state = self.state[2]
+        self.flag = False
+        self.bar_images = []
+        for i in range(0, 100, 5):
+            self.bar_images.append(get_image('./images/sprites/bar/bar{0}.png'.format(i)))
+
+
+
+    def move(self):
+        pass
 
     def resting_state(self):
         self.image = self.images[0]
@@ -193,12 +207,25 @@ class Cl_Tower(pygame.sprite.Sprite):
         self.current_state = self.state[1]
 
     def detection_bar(self):
-        pygame.draw.rect(screen, BLACK, self.rect.x - (self.rect.x // 2), self.rect.y - 20, height = 10, width = (self.detection_level_max/100) * 100)
-        pygame.draw.rect(screen, RED, self.rect.x - (self.rect.x // 2), self.rect.y - 20, height = 10, width = (self.detection_level/100) * 100)
+        x = self.rect.x
+        y = self.rect.y - 8
+        detect = myround(self.detection_level)
+        for i in range(len(self.bar_images)):
+            if 'bar{0}.png'.format(detect) in self.bar_images[i]:
+                self.image = self.bar_images[i]
+
+        screen.blit(image, (x, y))
+
+        clock = pygame.time.Clock()
+        clock.tick(60)
+        #TODO replace pygame draw with images to change to every... 5 to 10%
 
     class Cl_Tower_menu(pygame.sprite.Sprite):
-        def __init__(self):
-            pygame.sprite.Sprite.__init__(self, x, y, type)
+        def __init__(self, brian, fred, type):
+            pygame.sprite.Sprite.__init__(self)
+            self.x = brian
+            self.y = fred
+            self.type = type
             self.last = pygame.time.get_ticks()
             self.menu_images = []
             self.menu_images_inactive = []
@@ -218,63 +245,119 @@ class Cl_Tower(pygame.sprite.Sprite):
             self.menu_images.append(img)
             img = get_image('./images/sprites/cutpower_not_active.png')
             self.menu_images_inactive.append(img)
-            if type == 'move':
+            self.image = self.menu_images_inactive[0]
+            self.rect = self.image.get_rect()
+            self.rect.x = brian
+            self.rect.y = fred
+            if self.type == 'move':
                 self.image = self.menu_images_inactive[0]
-                self.rect = self.image.get_rect
-                self.rect.x = x
-                self.rect.y = y
-            elif type == 'reciving':
+                # self.rect.x += 50
+                # self.rect.y -= 100
+
+            elif self.type == 'reciving':
                 self.image = self.menu_images_inactive[1]
-                self.rect = self.image.get_rect
-                self.rect.x = x
-                self.rect.y = y
-            elif type == 'transmitting':
+                # self.rect.x += 150
+                # self.rect.y -= 50
+
+            elif self.type == 'transmitting':
                 self.image = self.menu_images_inactive[2]
-                self.rect = self.image.get_rect
-                self.rect.x = x
-                self.rect.y = y
-            elif type == 'cutpower':
+                # self.rect.x += 150
+                # self.rect.y += 50
+
+            elif self.type == 'cutpower':
                 self.image = self.menu_images_inactive[3]
-                self.rect = self.image.get_rect
-                self.rect.x = x
-                self.rect.y = y
+                # self.rect.x += 50
+                # self.rect.y += 100
+
 
         def image_flip(self):
-            if type == 'move':
+            if self.type == 'move':
                 self.image = self.menu_images[0]
-            elif type == 'reciving':
+            elif self.type == 'reciving':
                 self.image = self.menu_images[1]
-            elif type == 'transmitting':
+            elif self.type == 'transmitting':
                 self.image = self.menu_images[2]
-            elif type == 'cutpower':
+            elif self.type == 'cutpower':
                 self.image = self.menu_images[3]
 
-        def check_click(self, mouse):
-            if self.rect.collidepoint(mouse):
-                pass
+        def image_flop(self):
+            if self.type == 'move':
+                self.image = self.menu_images_inactive[0]
+            elif self.type == 'reciving':
+                self.image = self.menu_images_inactive[1]
+            elif self.type == 'transmitting':
+                self.image = self.menu_images_inactive[2]
+            elif self.type == 'cutpower':
+                self.image = self.menu_images_inactive[3]
+
+        def delete(self):
+            self.kill()
+
+        def clicked(self):
+            if pygame.time.get_ticks() > self.last + 300:
+                for s in game.tower_sprite_list:
+                    if s.flag == True:
+                        if self.type == 'move':
+                            s.flag = False
+                            Cl_Tower.close_menu(s)
+                            Cl_Tower.move(s)
+                            for t in game.menu_sprites:
+                                t.delete()
+                            game.menu_sprites.empty()
+                        elif self.type == 'reciving':
+                            s.flag = False
+                            Cl_Tower.close_menu(s)
+                            Cl_Tower.receiving_state(s)
+                            for t in game.menu_sprites:
+                                t.delete()
+                            game.menu_sprites.empty()
+                        elif self.type == 'transmitting':
+                            s.flag = False
+                            Cl_Tower.close_menu(s)
+                            Cl_Tower.sending_state(s)
+                            for t in game.menu_sprites:
+                                t.delete()
+                            game.menu_sprites.empty()
+                        elif self.type == 'cutpower':
+                            s.flag = False
+                            Cl_Tower.close_menu(s)
+                            Cl_Tower.resting_state(s)
+                            for t in game.menu_sprites:
+                                t.delete()
+                            game.menu_sprites.empty()
+
+
+
 
         def update(self):
+            if pygame.time.get_ticks() > self.last + 300:
+                if self.rect.collidepoint(pygame.mouse.get_pos()):
+                    self.image_flip()
+                else:
+                    self.image_flop()
 
-            if type == 'move':
-                if self.rect.x < x + 50:
-                    self.rect.x += 1
-                if self.rect.y > y - 100:
-                    self.rect.y -= 1
-            elif type == 'reciving':
-                if self.rect.x < x + 150:
-                    self.rect.x += 1
-                if self.rect.y > y + 50:
-                    self.rect.y += 1
-            elif type == 'transmitting':
-                if self.rect.x < x + 150:
-                    self.rect.x += 1
-                if self.rect.y > y - 50:
-                    self.rect.y += 1
-            elif type == 'cutpower':
-                if self.rect.x < x + 50:
-                    self.rect.x += 1
-                if self.rect.y > y + 100:
-                    self.rect.y += 1
+
+            self.menu_speed = 15
+            if self.type == 'move':
+                if self.rect.x < self.x + 50:
+                    self.rect.x += self.menu_speed
+                if self.rect.y > self.y - 100:
+                    self.rect.y -= self.menu_speed
+            elif self.type == 'reciving':
+                if self.rect.x < self.x + 150:
+                    self.rect.x += self.menu_speed
+                if self.rect.y < self.y + 50:
+                    self.rect.y += self.menu_speed
+            elif self.type == 'transmitting':
+                if self.rect.x < self.x + 150:
+                    self.rect.x += self.menu_speed
+                if self.rect.y > self.y - 50:
+                    self.rect.y -= self.menu_speed
+            elif self.type == 'cutpower':
+                if self.rect.x < self.x + 50:
+                    self.rect.x += self.menu_speed
+                if self.rect.y < self.y + 100:
+                    self.rect.y += self.menu_speed
 
     def update(self):
         if self.current_state == self.state[1]:
@@ -286,26 +369,28 @@ class Cl_Tower(pygame.sprite.Sprite):
         if self.detection_level >= self.detection_level_max:
             pass
         if self.detection_level > 0:
-            detection_bar()
+           self.detection_bar()
 
-            #todo add detection level event
+      
+    def close_menu(self):
+        self.open_menu = False
 
-    def check_click(self, mouse):
-        if self.rect.collidepoint(mouse):
-            self.menu_open()
 
     def menu_open(self):
-        self.move = self.Cl_Tower_menu(x = self.rect.x, y = self.rect.y, type = 'move')
-        self.receiving = self.Cl_Tower_menu(x = self.rect.x, y = self.rect.y, type = 'reciving')
-        self.transmitting = self.Cl_Tower_menu(x = self.rect.x, y = self.rect.y, type = 'transmitting')
-        self.cutpower = self.Cl_Tower_menu(x = self.rect.x, y = self.rect.y, type = 'cutpower')
-        game.is_menu_open = True
-        self.menu_sprites = pygame.sprite.Group()
-        self.menu_sprites.add(move)
-        self.menu_sprites.add(receiving)
-        self.menu_sprites.add(transmitting)
-        self.menu_sprites.add(cutpower)
+        if self.open_menu == False:
+            self.move = self.Cl_Tower_menu(self.rect.x, self.rect.y, type = 'move')
+            self.receiving = self.Cl_Tower_menu(self.rect.x, self.rect.y, type = 'reciving')
+            self.transmitting = self.Cl_Tower_menu(self.rect.x, self.rect.y, type = 'transmitting')
+            self.cutpower = self.Cl_Tower_menu(self.rect.x, self.rect.y, type = 'cutpower')
 
+
+            game.menu_sprites.add(self.move)
+            game.menu_sprites.add(self.receiving)
+            game.menu_sprites.add(self.transmitting)
+            game.menu_sprites.add(self.cutpower)
+            game.is_menu_open = True
+            self.open_menu = True
+            self.flag = True
 
 
 class Cl_Bunker(pygame.sprite.Sprite):
@@ -387,7 +472,7 @@ class Cl_Terrain(pygame.sprite.Sprite):
 
     
 class Game(object):                                     #class reps an instance of the game
-    def __init__(self):                                 #creates all attributes of the game
+    def __init__(self, screen):                                 #creates all attributes of the game
         self.game_over = False
         self.grid = [
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -398,11 +483,11 @@ class Game(object):                                     #class reps an instance 
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
-
+        self.screen = screen
         self.terrain_list = list()
         self.terrain = wang.wang_set(width = 12, height = 7)
         self.game_running = True
-
+        self.menu_sprites = pygame.sprite.Group()
         self.terrain_sprites = pygame.sprite.Group()
 
         for i in range(len(self.terrain)):
@@ -442,7 +527,8 @@ class Game(object):                                     #class reps an instance 
     def wire_toggle(self):
         now = pygame.time.get_ticks()
         if now - self.last_time >= self.cooldown:
-            pygame.mixer.Sound('./sound/menuclick.ogg')
+            sound = pygame.mixer.Sound('./sound/menuclick.wav')
+            sound.play()
             self.last_time = now
             if self.wire_show == False:
                 self.wire_show = True
@@ -506,31 +592,31 @@ class Game(object):                                     #class reps an instance 
         mouseinput = pygame.mouse.get_pressed()
         mouse_pos = pygame.mouse.get_pos()
 
+
         if keyinput[pygame.K_ESCAPE]:
             raise SystemExit
         if mouseinput[0] == 1:
             if mouse_pos[0] > 100 and mouse_pos[0] < 350 and mouse_pos[1] > 770 and mouse_pos[1] < 825:
                 self.wire_toggle()
 
-        for s in self.all_sprites_list:
-            try:
-                if pygame.Rect((s.rect.x, s.rect.y), (s.rect.width, s.rect.height)).collidepoint(pygame.mouse.get_pos()):
+        for s in self.tower_sprite_list:
+            if s.rect.collidepoint(mouse_pos):
+                if mouseinput[0] == 1:
+                    s.menu_open()
+        if self.is_menu_open == True:
+            for s in self.menu_sprites:
+                if s.rect.collidepoint(mouse_pos):
                     if mouseinput[0] == 1:
-                        s.check_click(event.pos)
-                    try:
-                        s.image_flip()
-                    except:
-                        pass
+                        s.clicked()
 
-            except:
-                continue
+
 
 
     def run_logic(self):                                #method runs each frame and updates positions
         if not self.game_over:                          #and checks for collisions
 
             self.all_sprites_list.update()              #move all sprites
-
+            self.menu_sprites.update()
 
 
 
@@ -542,6 +628,7 @@ class Game(object):                                     #class reps an instance 
     def display_frame(self, screen):
             screen.fill(DK_GREEN)
             screen.blit(self.BG1, [0,0])
+
 
 
             #todo display and level information
@@ -560,7 +647,7 @@ class Game(object):                                     #class reps an instance 
                 if self.wire_show == True:
                     self.wires_group.draw(screen)
                 if self.is_menu_open == True:
-                    menu_sprites.draw(screen)
+                    self.menu_sprites.draw(screen)
             pygame.display.flip()
 
 
@@ -582,7 +669,7 @@ def main():
 
     #creates gme instance
     global game
-    game = Game()
+    game = Game(screen)
 
     print(np.matrix(game.grid))
     print("above is the grid")
@@ -602,13 +689,11 @@ def main():
         #draw
         game.display_frame(screen)
         #pause for the next frame
+
         clock.tick(60)
 
 
     pygame.quit() # closes window and exits
-
-#BG1 = get_image('') #TODO set file path for background image
-#call the main function and start up the game
 
 if __name__ == '__main__':
     main()
