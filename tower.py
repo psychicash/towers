@@ -281,9 +281,19 @@ class Cl_Tower(pygame.sprite.Sprite):
             pass
 
     def bar_idle(self, game):
-        if self.detection_level > 0:
-            self.bar = self.Cl_detection_bar(self.rect.x, self.rect.y)
-            game.bar_sprite_list.add(self.bar)
+        x_list = []
+        y_list = []
+        for s in game.bar_sprite_list:
+            x_list.append(s.rect.x)
+            y_list.append(s.rect.y + 8)
+
+        if self.rect.x in x_list:
+            if self.rect.y in y_list:
+                pass
+            else:
+                if self.detection_level > 0:
+                    self.bar = self.Cl_detection_bar(self.rect.x, self.rect.y)
+                    game.bar_sprite_list.add(self.bar)
 
 
     def close_menu(self):
