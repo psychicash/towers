@@ -1,4 +1,7 @@
 #only works for 2 edge wang tileset
+# http://www.cr31.co.uk/stagecast/wang/intro.html
+# this handles bitwise 2 edge wang tilesets.
+
 import random
 
 
